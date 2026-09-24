@@ -30,7 +30,7 @@ public:
     static bool discoverPairing(IPAddress &outIp, uint16_t &outPort, uint32_t timeoutMs = 5000);
 
     // Auto-discover the wireless debugging connect port using mDNS
-    static bool discoverConnect(IPAddress &ip, uint16_t &outPort, uint32_t timeoutMs = 5000);
+    static bool discoverConnect(IPAddress ip, uint16_t &outPort, uint32_t timeoutMs = 5000);
 
     // Fast port scan fallback for Android's randomized ports (range 30000..50000)
     static uint16_t scanOpenPort(IPAddress ip, uint16_t startPort = 30000, uint16_t endPort = 50000);
