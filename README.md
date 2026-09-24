@@ -1,6 +1,6 @@
 # ESP32-MicroADB 📱⚡
 
-The first complete, standalone **Dual-Mode Android Debug Bridge (ADB) Host** for the ESP32-S3 microcontroller.
+A standalone **Dual-Mode Android Debug Bridge (ADB) Host** implementation for the ESP32-S3 microcontroller.
 
 Seamlessly bridge Android devices over **physical USB-OTG** or **high-speed Wi-Fi** with native support for modern **Android 11+ SPAKE2 Wireless Pairing**, legacy **port 5555 TCP/IP auto-discovery**, and hardware codename detection.
 
@@ -9,7 +9,7 @@ Seamlessly bridge Android devices over **physical USB-OTG** or **high-speed Wi-F
 ## 🌟 Key Features
 
 - **Android 11+ Wireless Pairing (SPAKE2 + TLS 1.3):**
-  - First-ever embedded microcontroller port of AOSP's wireless pairing protocol.
+  - Embedded microcontroller implementation of AOSP's wireless pairing protocol.
   - Full implementation of SPAKE2 key exchange over Curve25519 with RFC 5705 Keying Material Exporters using wolfSSL.
   - Pair using standard 6-digit Wi-Fi pairing codes directly from Android's *Developer options -> Wireless debugging*.
 - **Classic TCP/IP Port 5555 Auto-Discovery:**
@@ -46,8 +46,8 @@ Seamlessly bridge Android devices over **physical USB-OTG** or **high-speed Wi-F
 ### 1. Clone & Set Up Keys
 
 ```bash
-git clone https://github.com/<your-username>/esp32-adb-dual-host.git
-cd esp32-adb-dual-host
+git clone https://github.com/wolfxalpha4/esp32-adb-client.git
+cd esp32-adb-client
 ```
 
 Copy the keys template:
