@@ -10,6 +10,9 @@
 #include "adb_pairing.h"
 #include <Preferences.h>
 #include <nvs_flash.h>
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
+#include "esp_private/brownout.h"
 
 // =========================================================================
 // ADB Keys (Loaded from include/adb_keys.h, with fallback to template)
@@ -475,6 +478,7 @@ bool loadWiFiCredentials(String& ssid, String& pass) {
 void interactiveWiFiConnect() {
     Serial.println("\n[WiFi] Scanning for available networks...");
     WiFi.mode(WIFI_STA);
+    WiFi.setTxPower(WIFI_POWER_15dBm);
     WiFi.disconnect();
     delay(100);
 
@@ -1000,6 +1004,7 @@ void runPairingWorkflow() {
     }
 
     currentPhoneIP = targetIp;
+    delay(100);
     Serial.println("\n[Pair] Searching for Wireless Debugging connect port...");
     uint16_t connectPort = 0;
 
@@ -1020,6 +1025,7 @@ void runPairingWorkflow() {
     if (connectPort > 0) {
         Serial.printf("\n[Connect] Automatically connecting to %s:%d...\n", targetIp.toString().c_str(), connectPort);
         disconnectAdbWireless();
+        delay(200);
         if (adbClient.connect(targetIp, connectPort, 5000)) {
             performAdbHandshake();
         } else {
@@ -1033,6 +1039,7 @@ void runPairingWorkflow() {
         uint16_t manualConnectPort = cpStr.toInt();
         if (manualConnectPort > 0) {
             disconnectAdbWireless();
+            delay(150);
             if (adbClient.connect(targetIp, manualConnectPort, 5000)) {
                 performAdbHandshake();
             }
@@ -1061,6 +1068,10 @@ void printHelp() {
 // Setup & Interactive Loop
 // =========================================================================
 void setup() {
+    // Disable brownout detector to prevent resets caused by voltage dips during Wi-Fi bursts & TLS handshakes
+    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
+    esp_brownout_disable();
+
     Serial.begin(115200);
     pinMode(BOOT_PIN, INPUT_PULLUP);
     delay(1500);
@@ -1097,6 +1108,7 @@ void setup() {
     if (loadWiFiCredentials(savedSSID, savedPass)) {
         Serial.printf("\n[WiFi] Auto-connecting to saved network \"%s\"...\n", savedSSID.c_str());
         WiFi.mode(WIFI_STA);
+        WiFi.setTxPower(WIFI_POWER_15dBm);
         WiFi.begin(savedSSID.c_str(), savedPass.c_str());
         int timeout = 14;
         while (WiFi.status() != WL_CONNECTED && timeout > 0) {
@@ -1201,27 +1213,54 @@ void loop() {
             if (currentPhoneIP != IPAddress(0, 0, 0, 0)) {
                 Serial.printf("[Connect] Reconnecting to %s:%d...\n", currentPhoneIP.toString().c_str(), ADB_PORT);
                 disconnectAdbWireless();
-                if (adbClient.connect(currentPhoneIP, ADB_PORT, 5000)) {
+                delay(100);
+                if (adbClient.connect(currentPhoneIP, ADB_PORT, 2500)) {
                     performAdbHandshake();
                 } else {
-                    Serial.println("[Connect] Failed to connect. Auto-scanning subnet for phone...");
-                    IPAddress found = discoverAdbDevice();
-                    if (found != IPAddress(0, 0, 0, 0)) {
-                        currentPhoneIP = found;
+                    Serial.println("[Connect] Port 5555 not open. Searching for Android Wireless Debugging service (mDNS)...");
+                    uint16_t tlsPort = 0;
+                    if (AdbPairing::discoverConnect(currentPhoneIP, tlsPort, 3000)) {
+                        Serial.printf("[Connect] Connecting to auto-discovered port %d...\n", tlsPort);
                         disconnectAdbWireless();
-                        if (adbClient.connect(currentPhoneIP, ADB_PORT, 5000)) {
+                        delay(150);
+                        if (adbClient.connect(currentPhoneIP, tlsPort, 5000)) {
                             performAdbHandshake();
+                        }
+                    } else {
+                        Serial.println("[Connect] Failed to connect. Auto-scanning subnet for phone...");
+                        IPAddress found = discoverAdbDevice();
+                        if (found != IPAddress(0, 0, 0, 0)) {
+                            currentPhoneIP = found;
+                            disconnectAdbWireless();
+                            delay(100);
+                            if (adbClient.connect(currentPhoneIP, ADB_PORT, 5000)) {
+                                performAdbHandshake();
+                            }
                         }
                     }
                 }
             } else {
-                Serial.println("[Connect] No previous IP known. Auto-scanning subnet for phone...");
-                IPAddress found = discoverAdbDevice();
-                if (found != IPAddress(0, 0, 0, 0)) {
-                    currentPhoneIP = found;
+                Serial.println("[Connect] No previous IP known. Searching for Android Wireless Debugging service (mDNS)...");
+                IPAddress anyIp(0, 0, 0, 0);
+                uint16_t tlsPort = 0;
+                if (AdbPairing::discoverConnect(anyIp, tlsPort, 3000)) {
+                    currentPhoneIP = anyIp;
+                    Serial.printf("[Connect] Connecting to %s:%d...\n", currentPhoneIP.toString().c_str(), tlsPort);
                     disconnectAdbWireless();
-                    if (adbClient.connect(currentPhoneIP, ADB_PORT, 5000)) {
+                    delay(150);
+                    if (adbClient.connect(currentPhoneIP, tlsPort, 5000)) {
                         performAdbHandshake();
+                    }
+                } else {
+                    Serial.println("[Connect] Auto-scanning subnet for phone on port 5555...");
+                    IPAddress found = discoverAdbDevice();
+                    if (found != IPAddress(0, 0, 0, 0)) {
+                        currentPhoneIP = found;
+                        disconnectAdbWireless();
+                        delay(100);
+                        if (adbClient.connect(currentPhoneIP, ADB_PORT, 5000)) {
+                            performAdbHandshake();
+                        }
                     }
                 }
             }
@@ -1238,6 +1277,7 @@ void loop() {
                 currentPhoneIP = targetIp;
                 Serial.printf("[Connect] Connecting to %s:%d...\n", currentPhoneIP.toString().c_str(), port);
                 disconnectAdbWireless();
+                delay(150);
                 if (adbClient.connect(currentPhoneIP, port, 5000)) {
                     performAdbHandshake();
                 } else {

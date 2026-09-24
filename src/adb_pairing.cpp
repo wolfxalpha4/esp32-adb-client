@@ -35,7 +35,7 @@ bool AdbPairing::discoverPairing(IPAddress &outIp, uint16_t &outPort, uint32_t t
     return false;
 }
 
-bool AdbPairing::discoverConnect(IPAddress ip, uint16_t &outPort, uint32_t timeoutMs) {
+bool AdbPairing::discoverConnect(IPAddress &ip, uint16_t &outPort, uint32_t timeoutMs) {
     Serial.println("[mDNS] Searching for _adb-tls-connect._tcp service...");
     MDNS.begin("esp32-adb");
     int n = MDNS.queryService("adb-tls-connect", "tcp");
@@ -46,7 +46,8 @@ bool AdbPairing::discoverConnect(IPAddress ip, uint16_t &outPort, uint32_t timeo
 
     if (n > 0) {
         for (int i = 0; i < n; i++) {
-            if (MDNS.address(i) == ip || n == 1) {
+            if (ip == IPAddress(0, 0, 0, 0) || MDNS.address(i) == ip || n == 1) {
+                ip = MDNS.address(i);
                 outPort = MDNS.port(i);
                 Serial.printf("[mDNS] Found connect service at %s:%d\n", ip.toString().c_str(), outPort);
                 return true;
