@@ -1,0 +1,11 @@
+# PlatformIO build artifacts
+.pio/
+.vscode/
+
+# Raw flash memory backups and firmware binaries (Contains NVS Wi-Fi credentials!)
+backup/
+*.bin
+*.elf
+
+# Personal ADB private keys & certificates
+include/adb_keys.h
