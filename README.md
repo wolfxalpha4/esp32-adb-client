@@ -130,6 +130,12 @@ Type `1` or `2` to select, or use `connect 2` anytime to switch between phones.
 
 ---
 
+## ⚠️ Known Issues
+
+- **TCP/IP Port 5555 Stability:** Classic ADB TCP/IP (port 5555) connection works well and reliably, but you may encounter occasional hiccups when switching to USB-OTG mode or during the initial wireless pairing handshake.
+
+---
+
 ## 🔒 Security Notice
 
 - `include/adb_keys.h` is git-ignored by default. **Never commit your personal private keys or production certificates.**
